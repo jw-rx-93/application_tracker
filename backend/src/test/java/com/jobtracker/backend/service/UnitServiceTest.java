@@ -3,10 +3,10 @@ package com.jobtracker.backend.service;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,7 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.jobtracker.backend.repository.UserRepostory;
 import com.jobtracker.backend.dto.request.CreateUserDto;
-import com.jobtracker.backend.exception.UserExceptions;
+import com.jobtracker.backend.exception.UserExceptions.*;
 import com.jobtracker.backend.model.User;
 
 
@@ -60,6 +60,28 @@ public class UnitServiceTest {
     verify(userRepository).save(any(User.class));
   }
 
+  @Test
+  @DisplayName("Should update user with an encoded password")
+  void testUpdateUserPassword() {
+    String encodedPassword = "encodedPassword123";
+
+    when(passwordEncoder.encode(testPassword)).thenReturn(encodedPassword);
+    when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+      User savedUser = invocation.getArgument(0);
+      savedUser.setId(1L);
+      return savedUser;
+    });
+  
+    CreateUserDto userDto = new CreateUserDto(testUsername, testEmail, testPassword);
+    User createdUser = userService.createUser(userDto);
+    assertThat(createdUser.getPassword()).isEqualTo(encodedPassword);
+    
+    String encodedPassword2 = "good...how...pious";
+    when(passwordEncoder.encode(testPassword)).thenReturn(encodedPassword2);
+    userService.updatePassword(createdUser, testPassword);
+    assertThat(createdUser.getPassword()).isEqualTo(encodedPassword2);
+  }
+
   @Test 
   @DisplayName("Should raise errors if password not valid")
   void testNotValidPassword(){
@@ -76,10 +98,46 @@ public class UnitServiceTest {
   }
 
   @Test 
-  @DisplayName("Should raise errors if username is not present")
+  @DisplayName("Should raise error if username is not present")
   void testNoUsername() {
     assertThrows(InvalidUserDataException.class, () -> {
       CreateUserDto userDto = new CreateUserDto("", testEmail, testPassword);
+      userService.createUser(userDto);
+    });
+  }
+
+  @Test 
+  @DisplayName("Should raise error if username is too short")
+  void testShortUsername() {
+    assertThrows(InvalidUserDataException.class, () -> {
+      CreateUserDto userDto = new CreateUserDto("a", testEmail, testPassword);
+      userService.createUser(userDto);
+    });
+  }
+
+  @Test 
+  @DisplayName("Should raise error if username is too long")
+  void testLongUsername() {
+    assertThrows(InvalidUserDataException.class, () -> {
+      CreateUserDto userDto = new CreateUserDto("a".repeat(101), testEmail, testPassword);
+      userService.createUser(userDto);
+    });
+  }
+
+  @Test
+  @DisplayName("Should raise error if email is not present")
+  void testNoEmail() {
+    assertThrows(InvalidUserDataException.class, () -> {
+      CreateUserDto userDto = new CreateUserDto(testUsername, "", testPassword);
+      userService.createUser(userDto);
+    });
+  }
+
+  @Test
+  @DisplayName("Should raise error if email is not valid email format")
+  void testBadEmail() {
+    assertThrows(InvalidUserDataException.class, () -> {
+      CreateUserDto userDto = new CreateUserDto(testUsername, "oh hai yo...ohio?", testPassword);
       userService.createUser(userDto);
     });
   }

@@ -28,10 +28,6 @@ public class UserService {
     return userRepository.save(user); 
   }
 
-  public boolean verifyPassword(User user, String rawPassword) {
-    return passwordEncoder.matches(rawPassword, user.getPassword());
-  }
-
   public User updatePassword(User user, String rawPassword) {
     validatePassword(rawPassword);
     String newPassword = passwordEncoder.encode(rawPassword);
