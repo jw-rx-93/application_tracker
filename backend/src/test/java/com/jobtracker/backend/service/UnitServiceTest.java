@@ -16,6 +16,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.jobtracker.backend.repository.UserRepostory;
+import com.jobtracker.backend.dto.request.CreateUserDto;
+import com.jobtracker.backend.exception.UserExceptions;
 import com.jobtracker.backend.model.User;
 
 
@@ -31,36 +33,30 @@ public class UnitServiceTest {
   @InjectMocks
   private UserService userService;
 
-  private User testUser;
-
-  @BeforeEach 
-  void setUp() {
-    testUser = User.builder()
-      .username("test_user")
-      .email("test@example.com")
-      .password("encodedPassword123")
-      .build();
-  }
+  private static String testUsername = "test_user";
+  private static String testEmail = "test@example.com";
+  private static String testPassword = "Password123!";
 
   @Test 
   @DisplayName("Should create user with encoded password")
   void testCreateUser(){
-    String rawPassword = "MyPassword123!";
     String encodedPassword = "encodedPassword123";
 
-    when(passwordEncoder.encode(rawPassword)).thenReturn(encodedPassword);
+    when(passwordEncoder.encode(testPassword)).thenReturn(encodedPassword);
     when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
       User savedUser = invocation.getArgument(0);
       savedUser.setId(1L); 
       return savedUser; 
     });
 
-    User createdUser = userService.createUser("test_user", "test@example.com", rawPassword);
+
+    CreateUserDto userDto = new CreateUserDto(testUsername, testEmail, testPassword);
+    User createdUser = userService.createUser(userDto);
     assertThat(createdUser).isNotNull();
     assertThat(createdUser.getEmail()).isEqualTo("test@example.com");
     assertThat(createdUser.getUsername()).isEqualTo("test_user");
     assertThat(createdUser.getPassword()).isEqualTo(encodedPassword);
-    verify(passwordEncoder).encode(rawPassword);
+    verify(passwordEncoder).encode(testPassword);
     verify(userRepository).save(any(User.class));
   }
 
@@ -72,8 +68,9 @@ public class UnitServiceTest {
         "Badpassword1", "Badpassword$"};
 
     for (String badPassword : badPasswords) {
-      assertThrows(RuntimeException.class, () -> {
-        userService.createUser("test_user", "test@example.com", badPassword);
+      assertThrows(IllegalArgumentException.class, () -> {
+        CreateUserDto userDto = new CreateUserDto(testUsername, testEmail, badPassword);
+        userService.createUser(userDto);
       });
     }
   }
@@ -81,8 +78,9 @@ public class UnitServiceTest {
   @Test 
   @DisplayName("Should raise errors if username is not present")
   void testNoUsername() {
-      assertThrows(RuntimeException.class, () -> {
-      userService.createUser("", "test@example.com", "Password123!");
+    assertThrows(InvalidUserDataException.class, () -> {
+      CreateUserDto userDto = new CreateUserDto("", testEmail, testPassword);
+      userService.createUser(userDto);
     });
   }
 }
