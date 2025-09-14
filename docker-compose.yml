@@ -1,17 +1,36 @@
 version: '3'
 
 services:
-  postgres:
+  jobtracker_db:
     image: postgres:15
-    container_name: jobtracker
+    container_name: jobtracker_db
     environment:
-      - POSTGRES_DB=jobtracker
-      - POSTGRES_USER=jobtracker 
+      - POSTGRES_DB=jobtracker_db
+      - POSTGRES_USER=jobtracker_db
       - POSTGRES_PASSWORD=jobtracker123
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgres_sql/data 
-    
+
+  backend:
+    container_name: "jobtracker_be"
+    build: 
+      context: ./backend
+      dockerfile: ../Dockerfile
+    environment:
+        SPRING_PROFILES_ACTIVE: docker
+        SPRING_DATASOURCE_URL: jdbc:postgresql://jobtracker_db:5432/jobtracker_db
+        SPRING_DATASOURCE_USERNAME: jobtracker_db
+        SPRING_DATASOURCE_PASSWORD: jobtracker123
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/pom.xml:/app/pom.xml
+      - ~/.m2:/root/.m2
+    command: mvn spring-boot:run
+    ports:
+      - "8080:8080"
+    depends_on:
+      - jobtracker_db   
 volumes:
   postgres_data:
